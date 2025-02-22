@@ -1,12 +1,15 @@
+import { crypto } from 'https://deno.land/std@0.182.0/crypto/mod.ts'
 import { parse } from "https://deno.land/std@0.182.0/flags/mod.ts";
 import { serve } from "https://deno.land/std@0.182.0/http/server.ts";
-import { crypto } from 'https://deno.land/std@0.182.0/crypto/mod.ts'
 
 // 默认端口号
 const DEFAULT_PORT = 8080;
 
 // 当贝 API 地址
 const API_DOMAIN = 'https://ai-api.dangbei.net';
+
+// 最大会话轮数
+const MAX_CONVERSATION_COUNT = 50;
 
 const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
 const VALID_API_KEY = 'sk-maikeaxiang';
@@ -31,10 +34,14 @@ class ChatManage {
 
     getOrCreateIds(forceNew = false) {
         // 如果强制新建，创建新的设备ID
-        if (forceNew || !this.currentDeviceId) {
+        if (forceNew || !this.currentDeviceId || this.conversationCount >= MAX_CONVERSATION_COUNT) {
             this.currentDeviceId = this.generateDeviceId();
             this.currentConversationId = null;
+            this.conversationCount = 0;
+        } else {
+            this.conversationCount++;
         }
+
         return {
             deviceId: this.currentDeviceId,
             conversationId: this.currentConversationId
@@ -136,7 +143,7 @@ class Pipe {
         }
 
         // 强制创建新会话（修改部分）
-        const { deviceId } = this.chatManage.getOrCreateIds(true);
+        const { deviceId } = this.chatManage.getOrCreateIds(false);
         let conversationId = await this._create_conversation(deviceId);
 
         if (!conversationId) {
@@ -475,4 +482,4 @@ if (import.meta.main) {
     const parsedArgs = parse(args);
     const port = parsedArgs.port ? Number(parsedArgs.port) : DEFAULT_PORT;
     startServer(port);
-                      }
+}
