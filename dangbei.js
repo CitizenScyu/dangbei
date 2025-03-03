@@ -11,20 +11,49 @@ const API_DOMAIN = 'https://ai-api.dangbei.net';
 // 最大会话轮数
 const MAX_CONVERSATION_COUNT = 50;
 
-// 添加一个User Agent池
-const USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:124.0) Gecko/20100101 Firefox/124.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/125.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Edge/125.0.0.0 Safari/537.36'
-];
-
 const VALID_API_KEY = 'sk-maikeaxiang';
+
+// 添加随机 User-Agent 生成函数
+function generateRandomUserAgent() {
+    // 浏览器和版本
+    const browsers = [
+        { name: 'Chrome', minVer: 90, maxVer: 133, engine: 'AppleWebKit/537.36 (KHTML, like Gecko)' },
+        { name: 'Firefox', minVer: 80, maxVer: 122, engine: 'Gecko/20100101' },
+        { name: 'Safari', minVer: 14, maxVer: 17, engine: 'AppleWebKit/605.1.15 (KHTML, like Gecko)' },
+        { name: 'Edge', minVer: 90, maxVer: 124, engine: 'AppleWebKit/537.36 (KHTML, like Gecko) Edg/' }
+    ];
+    
+    // 操作系统
+    const osList = [
+        'Windows NT 10.0; Win64; x64',
+        'Windows NT 11.0; Win64; x64',
+        'Macintosh; Intel Mac OS X 10_15_7',
+        'Macintosh; Intel Mac OS X 11_5_2',
+        'Macintosh; Intel Mac OS X 12_3_1',
+        'X11; Linux x86_64',
+        'X11; Ubuntu; Linux x86_64',
+        'iPhone; CPU iPhone OS 15_4 like Mac OS X',
+        'iPad; CPU OS 16_2 like Mac OS X'
+    ];
+    
+    const browser = browsers[Math.floor(Math.random() * browsers.length)];
+    const os = osList[Math.floor(Math.random() * osList.length)];
+    const version = Math.floor(Math.random() * (browser.maxVer - browser.minVer + 1)) + browser.minVer;
+    
+    let ua = `Mozilla/5.0 (${os}) ${browser.engine}`;
+    
+    if (browser.name === 'Chrome') {
+        ua += ` Chrome/${version}.0.0.0 Safari/537.36`;
+    } else if (browser.name === 'Firefox') {
+        ua += ` Firefox/${version}.0`;
+    } else if (browser.name === 'Safari') {
+        ua += ` Version/${version}.0 Safari/605.1.15`;
+    } else if (browser.name === 'Edge') {
+        ua += ` Chrome/${version}.0.0.0 Safari/537.36 Edg/${version}.0.0.0`;
+    }
+    
+    return ua;
+}
 
 // 支持的模型列表
 const SUPPORTED_MODELS = [
@@ -76,11 +105,6 @@ class Pipe {
         this.chatManage = new ChatManage();
     }
 
-    // 获取随机UA的方法
-    getRandomUserAgent() {
-        return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-    }
-
     // 创建新的会话
     async _create_conversation(deviceId) {
         const payload = { botCode: "AI_SEARCH" };
@@ -91,7 +115,7 @@ class Pipe {
         const headers = {
             "Origin": "https://ai.dangbei.com",
             "Referer": "https://ai.dangbei.com/",
-            "User-Agent": this.getRandomUserAgent(),
+            "User-Agent": generateRandomUserAgent(),
             "deviceId": deviceId,
             "nonce": nonce,
             "sign": sign,
@@ -202,7 +226,7 @@ class Pipe {
         const headers = {
             'Origin': 'https://ai.dangbei.com',
             'Referer': 'https://ai.dangbei.com/',
-            'User-Agent': this.getRandomUserAgent(),
+            'User-Agent': generateRandomUserAgent(),
             'deviceId': deviceId,
             'nonce': nonce,
             'sign': sign,
@@ -248,19 +272,11 @@ class Pipe {
 
                             if (thinkingState.thinking === -1 && contentType === 'thinking') {
                                 thinkingState.thinking = 0;
-                                yield { choices: [{ delta: { content: '
-
-<think>
-
-\n\n' }, finish_reason: null }] };
+                                yield { choices: [{ delta: { content: '<think>\n\n' }, finish_reason: null }] };
                             } else if (thinkingState.thinking === 0 && contentType === 'text') {
                                 thinkingState.thinking = 1;
                                 yield { choices: [{ delta: { content: '\n' }, finish_reason: null }] };
-                                yield { choices: [{ delta: { content: '
-
-</think>
-
-' }, finish_reason: null }] };
+                                yield { choices: [{ delta: { content: '</think>' }, finish_reason: null }] };
                                 yield { choices: [{ delta: { content: '\n\n' }, finish_reason: null }] };
                             }
 
